@@ -1,44 +1,38 @@
-import subprocess
-import csv
-import time
-from datetime import datetime
+import os
 
-def monitor_gpu(output_file, interval=5, duration=60):
+def monitor_gpu_performance():
     """
-    Monitors GPU metrics using nvidia-smi and saves to a CSV file.
+    Monitors GPU performance using nvidia-smi and logs data to specified files.
 
-    :param output_file: Path to the CSV file to save data.
-    :param interval: Time (in seconds) between each monitoring snapshot.
-    :param duration: Total time (in seconds) to monitor GPU usage.
+    Logs:
+    - GPU power usage and other metrics to `./GPU_Metrics/plots/gpu_power.log`
+    - GPU utilization and memory metrics to `./GPU_Metrics/plots/gpu_usage.log`
     """
-    end_time = time.time() + duration
-    fields = ["timestamp", "gpu_id", "utilization", "memory_usage", "temperature"]
+    # Define the output directory relative to the current script
+    output_dir = os.path.join(os.getcwd(), "GPU_Metrics", "plots")
+    os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
 
-    with open(output_file, mode="w", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(fields)
+    # File paths for logs
+    output_files = [os.path.join(output_dir, "gpu_power.log"), os.path.join(output_dir, "gpu_usage.log")]
 
-        while time.time() < end_time:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            try:
-                # Run nvidia-smi command
-                result = subprocess.check_output(
-                    [
-                        "nvidia-smi",
-                        "--query-gpu=index,utilization.gpu,memory.used,temperature.gpu",
-                        "--format=csv,noheader,nounits"
-                    ],
-                    encoding="utf-8"
-                )
-                for line in result.strip().split("\n"):
-                    gpu_data = [timestamp] + line.split(", ")
-                    writer.writerow(gpu_data)
-            except subprocess.CalledProcessError as e:
-                print(f"Error executing nvidia-smi: {e}")
-            except Exception as e:
-                print(f"Unexpected error: {e}")
+    commands = [
+        "nvidia-smi --query-gpu=timestamp,index,name,utilization.gpu,utilization.memory,memory.total,memory.used,power.draw --format=csv,nounits -l 1",
+        "nvidia-smi --query-gpu=timestamp,index,name,utilization.gpu,utilization.memory,memory.total,memory.used --format=csv,nounits -l 1"
+    ]
 
-            time.sleep(interval)
+    processes = []
+    for cmd, file in zip(commands, output_files):
+        output = open(file, "w")
+        proc = subprocess.Popen(cmd, shell=True, stdout=output, stderr=subprocess.PIPE)
+        processes.append((proc, output))
 
-if __name__ == "__main__":
-    monitor_gpu(output_file="gpu_metrics.csv", interval=5, duration=300)  # Monitor for 5 minutes
+    try:
+        print("Monitoring GPU performance... Press Ctrl+C to stop.")
+        while not stop_monitoring.is_set():
+            time.sleep(1)  # Keep the script running to monitor performance
+    finally:
+        for proc, output in processes:
+            proc.terminate()
+            output.close()
+        print(f"Logs saved to {output_files[0]} and {output_files[1]}.")
+
