@@ -5,10 +5,8 @@ import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR100
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
-import warnings
-
-# Suppress FutureWarning
-warnings.filterwarnings("ignore", category=FutureWarning)
+from threading import Thread
+from GPU_Metrics.metrics.gpu_metrics import monitor_gpu_performance  # Relative import from gpu_metrics
 
 class BasicBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -71,6 +69,10 @@ def train_model(dataloader, iterations=10):
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     loss_fn = nn.CrossEntropyLoss()
 
+    # Start GPU monitoring in a separate thread
+    monitor_thread = Thread(target=monitor_gpu_performance, daemon=True)
+    monitor_thread.start()
+
     for epoch in range(iterations):
         model.train()
         correct = 0
@@ -91,6 +93,7 @@ def train_model(dataloader, iterations=10):
         accuracy = 100 * correct / total
         print(f"Epoch {epoch+1}/{iterations}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.2f}%")
 
+
 if __name__ == "__main__":
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
@@ -102,3 +105,4 @@ if __name__ == "__main__":
     dataloader = DataLoader(cifar100_dataset, batch_size=64, shuffle=True)
 
     train_model(dataloader)
+
