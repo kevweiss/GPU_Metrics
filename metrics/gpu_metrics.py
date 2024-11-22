@@ -1,4 +1,10 @@
+import subprocess
 import os
+import time
+import threading
+
+# Global stop event
+stop_monitoring = threading.Event()
 
 def monitor_gpu_performance():
     """
@@ -36,3 +42,10 @@ def monitor_gpu_performance():
             output.close()
         print(f"Logs saved to {output_files[0]} and {output_files[1]}.")
 
+def stop_monitoring_after_delay(delay):
+    """
+    Stops GPU monitoring after a given delay.
+    This is useful for testing or limiting the monitoring duration.
+    """
+    time.sleep(delay)
+    stop_monitoring.set()
