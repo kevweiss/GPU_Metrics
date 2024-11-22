@@ -6,7 +6,7 @@ from torchvision.datasets import CIFAR100
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from threading import Thread
-from GPU_Metrics.metrics.gpu_metrics import monitor_gpu_performance  # Relative import from gpu_metrics
+from GPU_Metrics.metrics.gpu_metrics import monitor_gpu_performance, stop_monitoring  # Import stop_monitoring
 
 class BasicBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -93,6 +93,10 @@ def train_model(dataloader, iterations=10):
         accuracy = 100 * correct / total
         print(f"Epoch {epoch+1}/{iterations}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.2f}%")
 
+    # Stop monitoring once the training is finished
+    stop_monitoring.set()
+    monitor_thread.join()  # Ensure the thread has finished before proceeding
+    print("GPU monitoring stopped and logs saved.")
 
 if __name__ == "__main__":
     transform = transforms.Compose([
@@ -105,4 +109,3 @@ if __name__ == "__main__":
     dataloader = DataLoader(cifar100_dataset, batch_size=64, shuffle=True)
 
     train_model(dataloader)
-
